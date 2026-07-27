@@ -600,12 +600,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (isFirebaseActive) {
-        // Attempt Firebase Upload with 6-second timeout fallback
+        // Attempt Firebase Upload
         try {
-          const result = await Promise.race([
-            uploadToFirebase(projectId, rawProjectName, entryFilePath),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase Timeout')), 6000))
-          ]);
+          const result = await uploadToFirebase(projectId, rawProjectName, entryFilePath);
           showUploadSuccessModal(result.mainHtmlUrl, result.projectName);
         } catch (err) {
           console.warn('Firebase Storage upload failed:', err.message);
@@ -613,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Falling back to Local Server Hosting...');
             uploadToLocalServer(projectId, rawProjectName, entryFilePath);
           } else {
-            showToast('Firebase Upload Failed. Please check your DB credentials.', 'error');
+            showToast('Firebase Upload Failed: ' + err.message, 'error');
             resetUploadForm();
             btnStartUpload.disabled = false;
           }
