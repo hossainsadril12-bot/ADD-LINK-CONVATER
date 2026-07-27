@@ -26,7 +26,7 @@ class FirebaseManager {
       apiKey: "AIzaSyAj_MCWRf0QdcdCH8SCrTg_SCEKvfkdz2w",
       authDomain: "add-banner-hub.firebaseapp.com",
       projectId: "add-banner-hub",
-      storageBucket: "add-banner-hub.firebasestorage.app",
+      storageBucket: "add-banner-hub.appspot.com",
       appId: "1:869539695443:web:5b277b9ea3f80c1dedefa6"
     };
   }

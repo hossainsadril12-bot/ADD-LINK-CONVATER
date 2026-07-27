@@ -692,17 +692,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalBytes = 0;
     const uploadedAssetPaths = [];
 
-    for (const fileObj of pendingFiles) {
-      totalBytes += fileObj.size;
+    // Parallel upload for all files in the folder (dramatically faster)
+    const uploadPromises = pendingFiles.map(async (fileObj) => {
       const storagePath = `banners/${projectId}/${fileObj.path}`;
       const storageRef = storage.ref(storagePath);
-
+      
       await storageRef.put(fileObj.file);
-      uploadedAssetPaths.push(storagePath);
+      
       uploadedCount++;
       const percent = Math.round((uploadedCount / totalFiles) * 80);
       updateProgress(percent, `Uploading file ${uploadedCount} of ${totalFiles}...`);
-    }
+      
+      return { size: fileObj.size, path: storagePath };
+    });
+
+    const results = await Promise.all(uploadPromises);
+    
+    results.forEach(res => {
+      totalBytes += res.size;
+      uploadedAssetPaths.push(res.path);
+    });
 
     const entryStoragePath = `banners/${projectId}/${entryFilePath}`;
     const mainHtmlUrl = await storage.ref(entryStoragePath).getDownloadURL();
