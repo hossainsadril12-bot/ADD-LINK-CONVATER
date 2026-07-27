@@ -689,13 +689,13 @@ document.addEventListener('DOMContentLoaded', () => {
       assetMap.forEach((dataUrl, pathOrName) => {
         if (!pathOrName.endsWith('.js') && !pathOrName.endsWith('.html')) {
           const escaped = pathOrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(`(["'])${escaped}(["'])`, 'g');
-          jsText = jsText.replace(regex, `$1${dataUrl}$2`);
+          const regex = new RegExp(`(["'])` + escaped + `(["'])`, 'g');
+          jsText = jsText.replace(regex, (match, q1, q2) => q1 + dataUrl + q2);
         }
       });
 
       const jsName = jsF.path.split('/').pop();
-      const scriptTagRegex = new RegExp(`<script[^>]*src=["'][^"']*${jsName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>\\s*<\\/script>`, 'gi');
+      const scriptTagRegex = new RegExp(`<script[^>]*src=["'][^"']*` + jsName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + `["'][^>]*>\\s*<\\/script>`, 'gi');
       htmlContent = htmlContent.replace(scriptTagRegex, '');
 
       bundledScripts += `\n<!-- Bundled ${jsName} -->\n<script>\n${jsText}\n</script>\n`;
@@ -705,8 +705,8 @@ document.addEventListener('DOMContentLoaded', () => {
     assetMap.forEach((dataUrl, pathOrName) => {
       if (!pathOrName.endsWith('.js') && !pathOrName.endsWith('.html')) {
         const escaped = pathOrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(["'])${escaped}(["'])`, 'g');
-        htmlContent = htmlContent.replace(regex, `$1${dataUrl}$2`);
+        const regex = new RegExp(`(["'])` + escaped + `(["'])`, 'g');
+        htmlContent = htmlContent.replace(regex, (match, q1, q2) => q1 + dataUrl + q2);
       }
     });
 
