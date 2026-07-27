@@ -1694,3 +1694,112 @@ body::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   Preview Board Modal UI Enhancements
+   ========================================================================== */
+
+.modal-lg {
+  max-width: 980px !important;
+  width: 92% !important;
+  max-height: 88vh !important;
+}
+
+.modal-header-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+}
+
+.modal-header-actions .btn-secondary {
+  white-space: nowrap !important;
+}
+
+.modal-header-actions .close-btn {
+  margin-left: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.preview-body {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 24px 28px 36px 28px !important;
+  background: rgba(10, 13, 24, 0.95) !important;
+  overflow-y: auto !important;
+  flex: 1;
+}
+
+.preview-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin-bottom: 24px !important;
+  width: 100% !important;
+  text-align: center !important;
+}
+
+.toolbar-label {
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  margin-right: 6px !important;
+}
+
+.preset-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #cbd5e1 !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.preset-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.preset-btn.active {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border-color: #818cf8 !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  font-weight: 600;
+}
+
+.iframe-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  max-width: 100% !important;
+  width: 300px;
+  height: 250px;
+  position: relative !important;
+}
+
+.iframe-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: #ffffff !important;
+  display: block !important;
+}
+

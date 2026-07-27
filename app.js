@@ -1138,6 +1138,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bannerPreviewIframe) bannerPreviewIframe.src = project.mainHtmlUrl;
     if (btnOpenPreviewTab) btnOpenPreviewTab.href = project.mainHtmlUrl;
 
+    const activePresetBtn = document.querySelector('.preset-btn.active') || document.querySelector('.preset-btn');
+    if (activePresetBtn && iframeContainer) {
+      const w = activePresetBtn.dataset.w;
+      const h = activePresetBtn.dataset.h;
+      iframeContainer.style.width = w.endsWith('%') ? w : `${w}px`;
+      iframeContainer.style.height = h.endsWith('%') ? h : `${h}px`;
+    }
+
     if (previewModal) previewModal.style.display = 'flex';
   }
 
