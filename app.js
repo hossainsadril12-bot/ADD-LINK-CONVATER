@@ -590,6 +590,14 @@ document.addEventListener('DOMContentLoaded', () => {
       btnStartUpload.disabled = true;
 
       const isFirebaseActive = window.firebaseManager && window.firebaseManager.isFirebaseActive;
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+      if (!isLocalhost && !isFirebaseActive) {
+        showToast('Cloud Deployment Detected: You MUST configure Firebase to upload banners. Local disk saves are not supported here.', 'error');
+        resetUploadForm();
+        btnStartUpload.disabled = false;
+        return;
+      }
 
       if (isFirebaseActive) {
         // Attempt Firebase Upload with 6-second timeout fallback
@@ -600,8 +608,15 @@ document.addEventListener('DOMContentLoaded', () => {
           ]);
           showUploadSuccessModal(result.mainHtmlUrl, result.projectName);
         } catch (err) {
-          console.warn('Firebase Storage upload failed or timed out. Falling back to Local Server Hosting:', err.message);
-          uploadToLocalServer(projectId, rawProjectName, entryFilePath);
+          console.warn('Firebase Storage upload failed:', err.message);
+          if (isLocalhost) {
+            console.warn('Falling back to Local Server Hosting...');
+            uploadToLocalServer(projectId, rawProjectName, entryFilePath);
+          } else {
+            showToast('Firebase Upload Failed. Please check your DB credentials.', 'error');
+            resetUploadForm();
+            btnStartUpload.disabled = false;
+          }
         }
       } else {
         uploadToLocalServer(projectId, rawProjectName, entryFilePath);
