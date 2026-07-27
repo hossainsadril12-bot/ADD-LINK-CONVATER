@@ -624,20 +624,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       updateProgress(60, 'Generating live web banner link...');
-      const mainHtmlUrl = await createBlobBannerUrl(pendingFiles, entryFilePath);
+      const { blobUrl, htmlContent } = await createBlobBannerUrl(pendingFiles, entryFilePath);
+      const shareableUrl = `${window.location.origin}/view.html?id=${projectId}`;
 
       const projectData = {
         id: projectId,
         projectName: projectName,
         entryFilePath: entryFilePath,
-        mainHtmlUrl: mainHtmlUrl,
+        mainHtmlUrl: shareableUrl,
+        blobUrl: blobUrl,
+        htmlContent: htmlContent,
         totalSize: totalBytes,
         fileCount: pendingFiles.length,
         createdAt: new Date().toISOString(),
-        storageType: 'blob'
+        storageType: 'cloud'
       };
 
       saveLocalProject(projectData);
+      try {
+        localStorage.setItem(`adlink_html_${projectId}`, htmlContent);
+      } catch (e) {
+        console.warn('LocalStorage html cache notice:', e);
+      }
+
       if (window.firebaseManager && window.firebaseManager.isFirebaseActive) {
         try {
           await window.firebaseManager.db.collection('banner_projects').doc(projectId).set(projectData);
@@ -647,7 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       updateProgress(100, 'Upload Complete!');
-      showUploadSuccessModal(mainHtmlUrl, projectName);
+      showUploadSuccessModal(shareableUrl, projectName);
 
     } catch (err) {
       console.error('Instant cloud deployment error:', err);
@@ -726,7 +735,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const blob = new Blob([htmlContent], { type: 'text/html' });
-    return URL.createObjectURL(blob);
+    return {
+      blobUrl: URL.createObjectURL(blob),
+      htmlContent: htmlContent
+    };
   }
 
   function fileToDataUrl(file) {
@@ -866,13 +878,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateProgress(95, 'Generating live banner URL...');
     const entryStoragePath = `banners/${projectId}/${entryFilePath}`;
-    const mainHtmlUrl = await storage.ref(entryStoragePath).getDownloadURL();
+    let rawStorageUrl = '';
+    try {
+      rawStorageUrl = await storage.ref(entryStoragePath).getDownloadURL();
+    } catch (e) {
+      console.warn('Storage download URL notice:', e);
+    }
+
+    const shareableUrl = `${window.location.origin}/view.html?id=${projectId}`;
+
+    let bundledHtmlContent = null;
+    try {
+      const res = await createBlobBannerUrl(pendingFiles, entryFilePath);
+      bundledHtmlContent = res.htmlContent;
+    } catch (e) {
+      console.warn('HTML bundling notice:', e);
+    }
 
     const projectData = {
       id: projectId,
       projectName: projectName,
       entryFilePath: entryFilePath,
-      mainHtmlUrl: mainHtmlUrl,
+      mainHtmlUrl: shareableUrl,
+      rawStorageUrl: rawStorageUrl,
+      htmlContent: bundledHtmlContent,
       totalSize: grandTotalBytes,
       fileCount: totalFiles,
       assetPaths: uploadedAssetPaths,

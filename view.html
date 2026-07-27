@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banner Preview - AdLink Hub</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+  <!-- Firebase Config -->
+  <script src="firebase-config.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-elevated: #334155;
+      --accent-primary: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-light: #818cf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --success-green: #10b981;
+      --error-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Header */
+    .viewer-header {
+      height: 60px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 10;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.1rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .project-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .project-name {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .actions-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Main Content & Canvas */
+    .viewer-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      padding: 2rem;
+      position: relative;
+    }
+
+    .iframe-wrapper {
+      position: relative;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+      display: block;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      z-index: 20;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent-light);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Error Overlay */
+    .error-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 480px;
+      text-align: center;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .error-icon {
+      width: 60px;
+      height: 60px;
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--error-red);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .error-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .error-desc {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .viewer-header {
+        padding: 0 1rem;
+      }
+      .brand-title {
+        display: none;
+      }
+      .project-name {
+        max-width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="viewer-header">
+    <a href="index.html" class="brand-section" title="Go to Dashboard">
+      <div class="brand-icon">
+        <i class="fa-solid fa-rectangle-ad"></i>
+      </div>
+      <span class="brand-title">AdLink Hub</span>
+    </a>
+
+    <div class="project-info">
+      <span class="project-name" id="project-name-display">Loading Banner...</span>
+    </div>
+
+    <div class="actions-group">
+      <button class="btn btn-secondary" id="btn-copy-link" title="Copy Shareable Link">
+        <i class="fa-regular fa-copy"></i> Copy Link
+      </button>
+      <a href="index.html" class="btn btn-primary" title="Return to Dashboard">
+        <i class="fa-solid fa-house"></i> Dashboard
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Display Body -->
+  <main class="viewer-body">
+    <!-- Loading Spinner -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="spinner"></div>
+      <p class="loading-text" id="loading-text">Fetching cloud banner asset...</p>
+    </div>
+
+    <!-- Error Card -->
+    <div class="error-card" id="error-card">
+      <div class="error-icon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h2 class="error-title">Banner Not Found</h2>
+      <p class="error-desc" id="error-message">
+        We couldn't locate this banner project. It may have been deleted, or the project link is invalid.
+      </p>
+      <a href="index.html" class="btn btn-primary">
+        <i class="fa-solid fa-arrow-left"></i> Return to Dashboard
+      </a>
+    </div>
+
+    <!-- Banner Frame Wrapper -->
+    <div class="iframe-wrapper" id="iframe-wrapper" style="display: none;">
+      <iframe id="banner-frame" title="Banner Preview" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const projectNameDisplay = document.getElementById('project-name-display');
+      const loadingOverlay = document.getElementById('loading-overlay');
+      const loadingText = document.getElementById('loading-text');
+      const errorCard = document.getElementById('error-card');
+      const errorMessage = document.getElementById('error-message');
+      const iframeWrapper = document.getElementById('iframe-wrapper');
+      const bannerFrame = document.getElementById('banner-frame');
+      const btnCopyLink = document.getElementById('btn-copy-link');
+
+      // 1. Get Project ID from URL query string
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('id');
+
+      if (btnCopyLink) {
+        btnCopyLink.addEventListener('click', () => {
+          navigator.clipboard.writeText(window.location.href).then(() => {
+            btnCopyLink.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            setTimeout(() => {
+              btnCopyLink.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Link';
+            }, 2000);
+          }).catch(err => {
+            console.error('Copy link failed:', err);
+          });
+        });
+      }
+
+      if (!projectId) {
+        showError('No banner project ID was provided in the URL link.');
+        return;
+      }
+
+      // 2. Attempt to fetch project data from Cloud Firestore or local cache
+      try {
+        let projectData = null;
+        let htmlContent = null;
+
+        // Try Firestore DB if available
+        if (window.firebaseManager && window.firebaseManager.isFirebaseActive) {
+          loadingText.textContent = 'Connecting to Cloud Firestore...';
+          try {
+            const docRef = await window.firebaseManager.db.collection('banner_projects').doc(projectId).get();
+            if (docRef.exists) {
+              projectData = docRef.data();
+              htmlContent = projectData.htmlContent || null;
+            }
+          } catch (fsErr) {
+            console.warn('Firestore fetch notice:', fsErr);
+          }
+        }
+
+        // Try Firestore raw fetch if firebaseManager needed fallback
+        if (!projectData && typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+          try {
+            const db = firebase.firestore();
+            const docRef = await db.collection('banner_projects').doc(projectId).get();
+            if (docRef.exists) {
+              projectData = docRef.data();
+              htmlContent = projectData.htmlContent || null;
+            }
+          } catch (e) {
+            console.warn('Fallback Firebase fetch notice:', e);
+          }
+        }
+
+        // LocalStorage Fallback (for local testing / offline cache)
+        if (!projectData) {
+          const cachedProjectsStr = localStorage.getItem('adlink_hub_projects');
+          if (cachedProjectsStr) {
+            try {
+              const localProjects = JSON.parse(cachedProjectsStr);
+              projectData = localProjects.find(p => p.id === projectId);
+              if (projectData) {
+                htmlContent = projectData.htmlContent || localStorage.getItem(`adlink_html_${projectId}`) || null;
+              }
+            } catch (e) {
+              console.warn('Localstorage parse error:', e);
+            }
+          }
+        }
+
+        if (!projectData && !htmlContent) {
+          showError(`Project "${projectId}" could not be retrieved from the cloud database. Please verify the upload or upload again.`);
+          return;
+        }
+
+        // Update UI
+        projectNameDisplay.textContent = projectData.projectName || 'Banner Preview';
+        document.title = `${projectData.projectName || 'Banner'} - AdLink Hub`;
+
+        // Render Banner
+        if (htmlContent) {
+          renderHtmlContent(htmlContent);
+        } else if (projectData.mainHtmlUrl && !projectData.mainHtmlUrl.startsWith('blob:')) {
+          renderExternalUrl(projectData.mainHtmlUrl);
+        } else {
+          showError('Banner HTML content is missing or expired.');
+        }
+
+      } catch (err) {
+        console.error('Error loading banner preview:', err);
+        showError('An unexpected error occurred while rendering the banner: ' + err.message);
+      }
+
+      function renderHtmlContent(content) {
+        loadingOverlay.style.display = 'none';
+        iframeWrapper.style.display = 'flex';
+
+        // Detect size if available or default
+        iframeWrapper.style.width = '100%';
+        iframeWrapper.style.height = '100%';
+        iframeWrapper.style.minHeight = '500px';
+
+        const doc = bannerFrame.contentWindow.document;
+        doc.open();
+        doc.write(content);
+        doc.close();
+      }
+
+      function renderExternalUrl(url) {
+        loadingOverlay.style.display = 'none';
+        iframeWrapper.style.display = 'flex';
+        iframeWrapper.style.width = '100%';
+        iframeWrapper.style.height = '100%';
+        iframeWrapper.style.minHeight = '500px';
+        bannerFrame.src = url;
+      }
+
+      function showError(msg) {
+        loadingOverlay.style.display = 'none';
+        iframeWrapper.style.display = 'none';
+        errorCard.style.display = 'flex';
+        errorMessage.textContent = msg;
+        projectNameDisplay.textContent = 'Error';
+      }
+    });
+  </script>
+</body>
+</html>
