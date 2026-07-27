@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ad Banner Link Dashboard</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css" />
+  
+  <!-- JSZip for ZIP Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Firebase SDKs (v10 Web Modular / Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Off-Canvas Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar" aria-label="Main Navigation">
+      <div class="sidebar-top">
+        <div class="logo-container">
+          <div class="logo-icon">
+            <i class="fa-solid fa-rectangle-ad"></i>
+          </div>
+          <div class="logo-text">
+            <h2>AdLink Hub</h2>
+            <span>Banner Asset Manager</span>
+          </div>
+        </div>
+        <button class="close-btn drawer-close-btn" id="btn-close-drawer" aria-label="Close Navigation Menu">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active" id="nav-dashboard">
+          <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-status">
+        <div class="status-indicator" id="db-status-pill">
+          <span class="dot yellow"></span>
+          <span class="status-text" id="db-status-text">Local Server Hosting Mode</span>
+        </div>
+        <p class="status-desc">Connect Firebase for cloud hosting & persistence.</p>
+        <button class="btn-secondary btn-sm" id="btn-configure-db">
+          <i class="fa-solid fa-gear"></i> Configure DB
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navigation Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="hamburger-btn" id="btn-mobile-menu" aria-label="Open Navigation Menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="header-title">
+            <h1>Ad Link Dashboard</h1>
+            <p>Upload HTML5 banner folders or ZIPs, host assets, and generate live shareable links.</p>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button class="btn-primary" id="btn-quick-upload">
+            <i class="fa-solid fa-cloud-arrow-up"></i> <span>Upload Banner</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Stats Metrics Bar -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon purple">
+            <i class="fa-solid fa-cubes"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Total Projects</span>
+            <h3 class="stat-value" id="stat-total-projects">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <i class="fa-solid fa-link"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Active Links</span>
+            <h3 class="stat-value" id="stat-active-links">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <i class="fa-solid fa-file-code"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Files Uploaded</span>
+            <h3 class="stat-value" id="stat-total-files">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon orange">
+            <i class="fa-solid fa-hard-drive"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Storage Used</span>
+            <h3 class="stat-value" id="stat-total-storage">0 MB</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upload Banner Section -->
+      <section class="upload-section" id="upload-section">
+        <div class="section-header">
+          <h2><i class="fa-solid fa-upload"></i> Upload New Banner Project</h2>
+          <span class="badge">Supports Folders & .ZIP archives</span>
+        </div>
+
+        <div class="upload-card">
+          <div class="upload-dropzone" id="dropzone">
+            <div class="dropzone-icon">
+              <i class="fa-solid fa-file-zipper"></i>
+            </div>
+            <h3>Drag & Drop Banner Folder or ZIP file here</h3>
+            <p>Upload complete HTML5 ad packages (including HTML, JS, images, GIFs)</p>
+
+            <div class="upload-options">
+              <label class="btn-primary upload-btn">
+                <i class="fa-solid fa-folder-open"></i> Select Folder
+                <input type="file" id="folder-input" webkitdirectory directory multiple hidden />
+              </label>
+
+              <span class="divider-text">OR</span>
+
+              <label class="btn-secondary upload-btn">
+                <i class="fa-solid fa-file-arrow-up"></i> Select ZIP File
+                <input type="file" id="zip-input" accept=".zip" hidden />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Projects Grid Section -->
+      <section class="projects-section">
+        <div class="section-header">
+          <h2><i class="fa-solid fa-list"></i> Created Banner Links</h2>
+          
+          <div class="filter-controls">
+            <!-- Search Box -->
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="search-input" placeholder="Search by name..." aria-label="Search banner projects by name" />
+            </div>
+
+            <!-- Date Filter -->
+            <div class="date-filter-box">
+              <i class="fa-regular fa-calendar-days"></i>
+              <input type="date" id="date-filter" class="filter-date-input" title="Filter by Created Date" aria-label="Filter projects by date" />
+              <button class="btn-clear-date" id="btn-clear-date" title="Clear Date Filter" aria-label="Clear date filter" style="display: none;">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <!-- Sort Selector -->
+            <select id="sort-select" class="filter-select" title="Sort Projects" aria-label="Sort projects list">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="name-asc">Name (A - Z)</option>
+              <option value="name-desc">Name (Z - A)</option>
+            </select>
+
+            <!-- View Toggle -->
+            <div class="view-toggle-group">
+              <button class="view-btn active" id="view-grid-btn" title="Grid View" aria-label="Switch to Grid View">
+                <i class="fa-solid fa-border-all"></i>
+              </button>
+              <button class="view-btn" id="view-list-btn" title="List View" aria-label="Switch to List View">
+                <i class="fa-solid fa-bars"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="projects-grid" id="projects-grid">
+          <!-- Dynamically populated project cards -->
+        </div>
+
+        <div class="empty-state" id="empty-state" style="display: none;">
+          <div class="empty-icon">
+            <i class="fa-solid fa-folder-plus"></i>
+          </div>
+          <h3>No Banner Projects Found</h3>
+          <p>Upload a banner folder like <code>untitled folder 2</code> or a .zip file above to create your first live link.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Upload Meta Form Modal (Glassmorphism Centered Box) -->
+  <div class="modal-overlay" id="upload-modal-overlay" style="display: none;">
+    <div class="modal-card modal-upload-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-folder-plus text-primary"></i>
+          <div>
+            <h3>Confirm Banner Upload</h3>
+            <span class="preview-url-sub" id="upload-modal-folder-name">Folder: untitled folder 2</span>
+          </div>
+        </div>
+        <button class="close-btn" id="btn-close-upload-modal" aria-label="Close upload modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="upload-meta-form" id="upload-meta-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-name-input"><i class="fa-solid fa-heading"></i> Project Name</label>
+              <input type="text" id="project-name-input" placeholder="e.g. ACI_Ad_Banner_300x250" />
+            </div>
+            <div class="form-group">
+              <label for="entry-file-select"><i class="fa-solid fa-code"></i> Main Entry File</label>
+              <select id="entry-file-select">
+                <option value="">Detecting HTML file...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="files-preview-box">
+            <div class="files-header">
+              <span><i class="fa-solid fa-list-check"></i> Files to Upload (<strong id="selected-file-count">0</strong>)</span>
+              <span id="selected-total-size">0 KB</span>
+            </div>
+            <ul class="files-list" id="selected-files-list"></ul>
+          </div>
+
+          <!-- Upload Progress Bar -->
+          <div class="progress-container" id="upload-progress-container" style="display: none;">
+            <div class="progress-info">
+              <span id="progress-status-text">Uploading assets to Storage...</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btn-cancel-upload">Cancel</button>
+            <button type="button" class="btn-primary" id="btn-start-upload">
+              <i class="fa-solid fa-rocket"></i> Publish & Generate Link
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Success Notification Modal -->
+  <div class="modal-overlay" id="upload-success-modal" style="display: none;">
+    <div class="modal-card modal-success-box">
+      <div class="modal-body text-center">
+        <div class="success-icon-glow">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 id="success-modal-title">Banner Published Successfully!</h3>
+        <p id="success-modal-desc">Your HTML5 banner project is live and ready to share.</p>
+
+        <div class="success-link-container">
+          <span class="success-link-label"><i class="fa-solid fa-link"></i> Live Shareable Link:</span>
+          <div class="link-box" style="margin-bottom: 0;">
+            <a href="#" target="_blank" class="link-url" id="success-modal-link-url">http://localhost:3000/...</a>
+            <button class="btn-primary btn-sm" id="btn-success-copy-link" aria-label="Copy live link">
+              <i class="fa-solid fa-copy"></i> Copy
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-confirm-actions">
+          <button type="button" class="btn-secondary" id="btn-success-close">Done</button>
+          <button type="button" class="btn-primary" id="btn-success-preview">
+            <i class="fa-solid fa-eye"></i> Preview Ad
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation & Prompt Modal -->
+  <div class="modal-overlay" id="confirm-modal" style="display: none;">
+    <div class="modal-card modal-confirm-box">
+      <div class="modal-body text-center">
+        <div class="confirm-icon" id="confirm-modal-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 id="confirm-modal-title">Are you sure?</h3>
+        <p id="confirm-modal-message">Do you really want to proceed?</p>
+        
+        <div class="form-group" id="confirm-modal-input-group" style="display: none; margin-top: 16px;">
+          <input type="text" id="confirm-modal-input" placeholder="Enter new project name" />
+        </div>
+
+        <div class="modal-confirm-actions">
+          <button type="button" class="btn-secondary" id="confirm-modal-cancel-btn">Cancel</button>
+          <button type="button" class="btn-primary btn-danger" id="confirm-modal-action-btn">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="preview-modal" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-eye"></i>
+          <div>
+            <h3 id="preview-modal-title">Banner Preview</h3>
+            <span class="preview-url-sub" id="preview-modal-url">http://...</span>
+          </div>
+        </div>
+        <div class="modal-header-actions">
+          <button class="btn-secondary btn-sm" id="btn-copy-preview-link" aria-label="Copy banner preview URL">
+            <i class="fa-solid fa-copy"></i> Copy Link
+          </button>
+          <a href="#" target="_blank" class="btn-secondary btn-sm" id="btn-open-preview-tab" aria-label="Open banner in new tab">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Tab
+          </a>
+          <button class="close-btn" id="btn-close-preview" aria-label="Close preview modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="modal-body preview-body">
+        <div class="preview-toolbar">
+          <span class="toolbar-label">Preset Viewport:</span>
+          <button class="preset-btn active" data-w="300" data-h="250">300 x 250 (Medium Rec)</button>
+          <button class="preset-btn" data-w="728" data-h="90">728 x 90 (Leaderboard)</button>
+          <button class="preset-btn" data-w="160" data-h="600">160 x 600 (Skyscraper)</button>
+          <button class="preset-btn" data-w="100%" data-h="100%">Fit Screen</button>
+        </div>
+
+        <div class="iframe-container" id="iframe-container">
+          <iframe id="banner-preview-iframe" title="Live Banner Preview" src="about:blank"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Configuration Modal -->
+  <div class="modal-overlay" id="firebase-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-fire text-orange"></i>
+          <div>
+            <h3>Firebase Connection Setup</h3>
+            <span>Connect your Firebase Project for cloud storage & live URLs</span>
+          </div>
+        </div>
+        <button class="close-btn" id="btn-close-firebase" aria-label="Close Firebase configuration modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>Paste your Firebase Web App configuration below. It will be stored safely in your local browser storage.</p>
+        </div>
+
+        <form id="firebase-config-form">
+          <div class="form-group">
+            <label for="fb-apiKey">API Key</label>
+            <input type="text" id="fb-apiKey" placeholder="AIzaSy..." required />
+          </div>
+
+          <div class="form-group">
+            <label for="fb-authDomain">Auth Domain</label>
+            <input type="text" id="fb-authDomain" placeholder="your-app.firebaseapp.com" required />
+          </div>
+
+          <div class="form-group">
+            <label for="fb-projectId">Project ID</label>
+            <input type="text" id="fb-projectId" placeholder="your-app-id" required />
+          </div>
+
+          <div class="form-group">
+            <label for="fb-storageBucket">Storage Bucket</label>
+            <input type="text" id="fb-storageBucket" placeholder="your-app.appspot.com" required />
+          </div>
+
+          <div class="form-group">
+            <label for="fb-appId">App ID</label>
+            <input type="text" id="fb-appId" placeholder="1:123456789:web:abcdef..." required />
+          </div>
+
+          <div class="form-actions space-between">
+            <button type="button" class="btn-secondary" id="btn-clear-firebase">Reset to Local Mode</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save & Connect</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Custom Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
