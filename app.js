@@ -622,19 +622,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function uploadToLocalServer(projectId, projectName, entryFilePath) {
-    updateProgress(30, 'Saving assets to Local Server...');
+    updateProgress(10, 'Preparing assets for local server...');
 
     try {
-      const encodedFiles = await Promise.all(pendingFiles.map(async (f) => {
+      let totalBytes = 0;
+      pendingFiles.forEach(f => totalBytes += f.size);
+
+      const encodedFiles = [];
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const f = pendingFiles[i];
         const content = await fileToBase64(f.file);
-        return {
+        encodedFiles.push({
           path: f.path,
           content: content,
           isBase64: true
-        };
-      }));
+        });
+        const pct = Math.round(10 + ((i + 1) / pendingFiles.length) * 50);
+        updateProgress(pct, `Processing file ${i + 1} of ${pendingFiles.length}...`);
+      }
 
-      updateProgress(70, 'Configuring live static URL...');
+      updateProgress(70, 'Saving assets to local disk...');
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -650,8 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!data.success) throw new Error(data.error || 'Server upload failed');
 
       const mainHtmlUrl = `${data.baseUrl}${entryFilePath}`;
-      let totalBytes = 0;
-      pendingFiles.forEach(f => totalBytes += f.size);
 
       const projectData = {
         id: projectId,
@@ -688,31 +693,52 @@ document.addEventListener('DOMContentLoaded', () => {
     const storage = window.firebaseManager.storage;
     const db = window.firebaseManager.db;
     const totalFiles = pendingFiles.length;
-    let uploadedCount = 0;
-    let totalBytes = 0;
+    let grandTotalBytes = 0;
+    pendingFiles.forEach(f => grandTotalBytes += f.size);
+
+    const fileTransferred = new Map();
     const uploadedAssetPaths = [];
 
-    // Parallel upload for all files in the folder (dramatically faster)
-    const uploadPromises = pendingFiles.map(async (fileObj) => {
-      const storagePath = `banners/${projectId}/${fileObj.path}`;
-      const storageRef = storage.ref(storagePath);
-      
-      await storageRef.put(fileObj.file);
-      
-      uploadedCount++;
-      const percent = Math.round((uploadedCount / totalFiles) * 80);
-      updateProgress(percent, `Uploading file ${uploadedCount} of ${totalFiles}...`);
-      
-      return { size: fileObj.size, path: storagePath };
+    const updateGrandProgress = () => {
+      let currentTransferred = 0;
+      fileTransferred.forEach(bytes => currentTransferred += bytes);
+      const pct = Math.min(95, Math.max(5, Math.round((currentTransferred / (grandTotalBytes || 1)) * 90)));
+      const mbTransferred = (currentTransferred / (1024 * 1024)).toFixed(2);
+      const mbTotal = (grandTotalBytes / (1024 * 1024)).toFixed(2);
+      updateProgress(pct, `Uploading to Firebase (${mbTransferred} MB / ${mbTotal} MB)...`);
+    };
+
+    updateProgress(5, `Starting upload of ${totalFiles} files (${(grandTotalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
+
+    const uploadPromises = pendingFiles.map((fileObj) => {
+      return new Promise((resolve, reject) => {
+        const storagePath = `banners/${projectId}/${fileObj.path}`;
+        const storageRef = storage.ref(storagePath);
+        const uploadTask = storageRef.put(fileObj.file);
+
+        fileTransferred.set(fileObj.path, 0);
+
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            fileTransferred.set(fileObj.path, snapshot.bytesTransferred);
+            updateGrandProgress();
+          },
+          (error) => {
+            reject(error);
+          },
+          () => {
+            fileTransferred.set(fileObj.path, fileObj.size);
+            updateGrandProgress();
+            uploadedAssetPaths.push(storagePath);
+            resolve({ size: fileObj.size, path: storagePath });
+          }
+        );
+      });
     });
 
-    const results = await Promise.all(uploadPromises);
-    
-    results.forEach(res => {
-      totalBytes += res.size;
-      uploadedAssetPaths.push(res.path);
-    });
+    await Promise.all(uploadPromises);
 
+    updateProgress(95, 'Generating live banner URL...');
     const entryStoragePath = `banners/${projectId}/${entryFilePath}`;
     const mainHtmlUrl = await storage.ref(entryStoragePath).getDownloadURL();
 
@@ -721,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
       projectName: projectName,
       entryFilePath: entryFilePath,
       mainHtmlUrl: mainHtmlUrl,
-      totalSize: totalBytes,
+      totalSize: grandTotalBytes,
       fileCount: totalFiles,
       assetPaths: uploadedAssetPaths,
       createdAt: new Date().toISOString(),
@@ -729,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     await db.collection('banner_projects').doc(projectId).set(projectData);
+    updateProgress(100, 'Upload Complete!');
     return projectData;
   }
 
