@@ -657,38 +657,69 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function createBlobBannerUrl(pendingFiles, entryFilePath) {
-    const fileMap = new Map();
+    const assetMap = new Map();
     let entryFile = null;
+    let jsFiles = [];
 
     for (const f of pendingFiles) {
-      if (f.path === entryFilePath || (f.file && f.file.name === entryFilePath)) {
+      const fileName = f.path.split('/').pop();
+      if (f.path === entryFilePath || fileName === entryFilePath) {
         entryFile = f;
+      } else if (fileName.endsWith('.js')) {
+        jsFiles.push(f);
       }
+
       const dataUrl = await fileToDataUrl(f.file);
-      fileMap.set(f.path, dataUrl);
-      const baseName = f.path.split('/').pop();
-      if (!fileMap.has(baseName)) fileMap.set(baseName, dataUrl);
+      assetMap.set(f.path, dataUrl);
+      assetMap.set(fileName, dataUrl);
+      assetMap.set(`images/${fileName}`, dataUrl);
     }
 
-    if (!entryFile) entryFile = pendingFiles.find(f => f.path.endsWith('.html')) || pendingFiles[0];
+    if (!entryFile) {
+      entryFile = pendingFiles.find(f => f.path.endsWith('.html')) || pendingFiles[0];
+    }
 
-    let htmlText = await fileToText(entryFile.file);
+    let htmlContent = await fileToText(entryFile.file);
 
-    // Replace relative asset references with Data URLs
-    fileMap.forEach((dataUrl, relPath) => {
-      if (relPath !== entryFilePath) {
-        const escapedPath = relPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(["'])${escapedPath}(["'])`, 'g');
-        htmlText = htmlText.replace(regex, `$1${dataUrl}$2`);
+    // Read and bundle JS files, replacing asset references inside JS code with Data URIs
+    let bundledScripts = '';
+    for (const jsF of jsFiles) {
+      let jsText = await fileToText(jsF.file);
 
-        const baseName = relPath.split('/').pop();
-        const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regexBase = new RegExp(`(["'])${escapedBase}(["'])`, 'g');
-        htmlText = htmlText.replace(regexBase, `$1${dataUrl}$2`);
+      assetMap.forEach((dataUrl, pathOrName) => {
+        if (!pathOrName.endsWith('.js') && !pathOrName.endsWith('.html')) {
+          const escaped = pathOrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(["'])${escaped}(["'])`, 'g');
+          jsText = jsText.replace(regex, `$1${dataUrl}$2`);
+        }
+      });
+
+      const jsName = jsF.path.split('/').pop();
+      const scriptTagRegex = new RegExp(`<script[^>]*src=["'][^"']*${jsName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>\\s*<\\/script>`, 'gi');
+      htmlContent = htmlContent.replace(scriptTagRegex, '');
+
+      bundledScripts += `\n<!-- Bundled ${jsName} -->\n<script>\n${jsText}\n</script>\n`;
+    }
+
+    // Replace asset references inside HTML content
+    assetMap.forEach((dataUrl, pathOrName) => {
+      if (!pathOrName.endsWith('.js') && !pathOrName.endsWith('.html')) {
+        const escaped = pathOrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(["'])${escaped}(["'])`, 'g');
+        htmlContent = htmlContent.replace(regex, `$1${dataUrl}$2`);
       }
     });
 
-    const blob = new Blob([htmlText], { type: 'text/html' });
+    // Inject bundled scripts right before </head> or </body>
+    if (htmlContent.includes('</head>')) {
+      htmlContent = htmlContent.replace('</head>', `${bundledScripts}</head>`);
+    } else if (htmlContent.includes('</body>')) {
+      htmlContent = htmlContent.replace('</body>', `${bundledScripts}</body>`);
+    } else {
+      htmlContent += bundledScripts;
+    }
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     return URL.createObjectURL(blob);
   }
 
