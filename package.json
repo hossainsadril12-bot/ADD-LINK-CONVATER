@@ -1,0 +1,9 @@
+{
+  "name": "adlink-hub",
+  "version": "1.0.0",
+  "description": "AdLink Hub - Banner Asset Manager Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
