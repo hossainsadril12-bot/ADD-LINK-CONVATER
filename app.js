@@ -669,7 +669,13 @@ document.addEventListener('DOMContentLoaded', () => {
         jsFiles.push(f);
       }
 
-      const dataUrl = await fileToDataUrl(f.file);
+      let dataUrl = await fileToDataUrl(f.file);
+      // Append #asset.ext so CreateJS LoadQueue can parse the image file extension from dataURIs
+      if (!fileName.endsWith('.js') && !fileName.endsWith('.html') && fileName.includes('.')) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        dataUrl = `${dataUrl}#asset.${ext}`;
+      }
+
       assetMap.set(f.path, dataUrl);
       assetMap.set(fileName, dataUrl);
       assetMap.set(`images/${fileName}`, dataUrl);
