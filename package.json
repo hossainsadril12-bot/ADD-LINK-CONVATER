@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AdLink Hub - Banner Asset Manager Dashboard",
   "scripts": {
-    "start:local": "node local-dev-server.js"
+    "start:local": "node local-dev-server.js",
+    "dev": "node local-dev-server.js"
   }
 }
