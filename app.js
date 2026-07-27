@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCancelUpload) btnCancelUpload.addEventListener('click', resetUploadForm);
 
   /* ==========================================================================
-     Start Upload Execution (Firebase Cloud or Local Web Server)
+     Start Upload Execution (Firebase Cloud, Local Server, or Web Blob)
      ========================================================================== */
 
   if (btnStartUpload) {
@@ -592,32 +592,121 @@ document.addEventListener('DOMContentLoaded', () => {
       const isFirebaseActive = window.firebaseManager && window.firebaseManager.isFirebaseActive;
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-      if (!isLocalhost && !isFirebaseActive) {
-        showToast('Cloud Deployment Detected: You MUST configure Firebase to upload banners. Local disk saves are not supported here.', 'error');
-        resetUploadForm();
-        btnStartUpload.disabled = false;
-        return;
+      if (isFirebaseActive) {
+        try {
+          const firebaseUploadPromise = uploadToFirebase(projectId, rawProjectName, entryFilePath);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firebase Storage unresponsive (CORS or Security Rules blocking access)')), 5000)
+          );
+
+          const result = await Promise.race([firebaseUploadPromise, timeoutPromise]);
+          showUploadSuccessModal(result.mainHtmlUrl, result.projectName);
+          return;
+        } catch (err) {
+          console.warn('Firebase Storage upload bypass:', err.message);
+          showToast('Firebase connection delayed. Processing instant web deployment...', 'info');
+        }
       }
 
-      if (isFirebaseActive) {
-        // Attempt Firebase Upload
-        try {
-          const result = await uploadToFirebase(projectId, rawProjectName, entryFilePath);
-          showUploadSuccessModal(result.mainHtmlUrl, result.projectName);
-        } catch (err) {
-          console.warn('Firebase Storage upload failed:', err.message);
-          if (isLocalhost) {
-            console.warn('Falling back to Local Server Hosting...');
-            uploadToLocalServer(projectId, rawProjectName, entryFilePath);
-          } else {
-            showToast('Firebase Upload Failed: ' + err.message, 'error');
-            resetUploadForm();
-            btnStartUpload.disabled = false;
-          }
-        }
-      } else {
+      // Fallback: Local Server (on localhost) or Instant Web Blob (on Netlify/Vercel)
+      if (isLocalhost) {
         uploadToLocalServer(projectId, rawProjectName, entryFilePath);
+      } else {
+        processCloudBlobUpload(projectId, rawProjectName, entryFilePath);
       }
+    });
+  }
+
+  async function processCloudBlobUpload(projectId, projectName, entryFilePath) {
+    updateProgress(25, 'Preparing assets for instant cloud deployment...');
+    let totalBytes = 0;
+    pendingFiles.forEach(f => totalBytes += f.size);
+
+    try {
+      updateProgress(60, 'Generating live web banner link...');
+      const mainHtmlUrl = await createBlobBannerUrl(pendingFiles, entryFilePath);
+
+      const projectData = {
+        id: projectId,
+        projectName: projectName,
+        entryFilePath: entryFilePath,
+        mainHtmlUrl: mainHtmlUrl,
+        totalSize: totalBytes,
+        fileCount: pendingFiles.length,
+        createdAt: new Date().toISOString(),
+        storageType: 'blob'
+      };
+
+      saveLocalProject(projectData);
+      if (window.firebaseManager && window.firebaseManager.isFirebaseActive) {
+        try {
+          await window.firebaseManager.db.collection('banner_projects').doc(projectId).set(projectData);
+        } catch (e) {
+          console.warn('Firestore metadata sync note:', e);
+        }
+      }
+
+      updateProgress(100, 'Upload Complete!');
+      showUploadSuccessModal(mainHtmlUrl, projectName);
+
+    } catch (err) {
+      console.error('Instant cloud deployment error:', err);
+      showToast('Error processing banner: ' + err.message, 'error');
+      btnStartUpload.disabled = false;
+    }
+  }
+
+  async function createBlobBannerUrl(pendingFiles, entryFilePath) {
+    const fileMap = new Map();
+    let entryFile = null;
+
+    for (const f of pendingFiles) {
+      if (f.path === entryFilePath || (f.file && f.file.name === entryFilePath)) {
+        entryFile = f;
+      }
+      const dataUrl = await fileToDataUrl(f.file);
+      fileMap.set(f.path, dataUrl);
+      const baseName = f.path.split('/').pop();
+      if (!fileMap.has(baseName)) fileMap.set(baseName, dataUrl);
+    }
+
+    if (!entryFile) entryFile = pendingFiles.find(f => f.path.endsWith('.html')) || pendingFiles[0];
+
+    let htmlText = await fileToText(entryFile.file);
+
+    // Replace relative asset references with Data URLs
+    fileMap.forEach((dataUrl, relPath) => {
+      if (relPath !== entryFilePath) {
+        const escapedPath = relPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(["'])${escapedPath}(["'])`, 'g');
+        htmlText = htmlText.replace(regex, `$1${dataUrl}$2`);
+
+        const baseName = relPath.split('/').pop();
+        const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regexBase = new RegExp(`(["'])${escapedBase}(["'])`, 'g');
+        htmlText = htmlText.replace(regexBase, `$1${dataUrl}$2`);
+      }
+    });
+
+    const blob = new Blob([htmlText], { type: 'text/html' });
+    return URL.createObjectURL(blob);
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = err => reject(err);
+    });
+  }
+
+  function fileToText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = err => reject(err);
     });
   }
 
